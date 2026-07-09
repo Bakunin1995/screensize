@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UK Premium Large Format (PLF) Cinema Registry</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Material Icons & Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        /* Fluid scaling animations for the visual comparison elements */
+        .vis-transition {
+            transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+        /* Tap-target padding helpers */
+        .touch-target {
+            min-height: 44px;
+            min-width: 44px;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col pb-20 md:pb-0">
+
+    <header class="bg-slate-900 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-5 sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h1 class="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+                    <span class="material-icons text-sky-400 text-2xl sm:text-3xl">local_movies</span>
+                    UK Premium Large Format (PLF) Cinema Registry
+                </h1>
+                <p class="text-slate-400 text-xs sm:text-sm mt-1">
+                    An interactive tool to compare your favourite cinema screens
+                </p>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
+        
+        <section class="bg-slate-950 text-slate-100 rounded-xl overflow-hidden shadow-lg border border-slate-800" id="visualizerCard">
+            <div class="p-4 bg-slate-900 border-b border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 class="text-base sm:text-lg font-bold flex items-center gap-2 text-sky-400">
+                        <span class="material-icons text-base">aspect_ratio</span>
+                        Screen Size Comparison tool
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-0.5">Click or tap rows below to compare up to 4 screens simultaneously.</p>
+                </div>
+                
+                <!-- Comparator Overlay Controls -->
+                <div class="flex flex-wrap gap-2 items-center text-xs w-full sm:w-auto">
+                    <button id="btnClearComparison" class="bg-rose-500/20 hover:bg-rose-500/35 text-rose-300 font-semibold py-2 px-3 rounded-lg transition border border-rose-500/30 touch-target w-full sm:w-auto">
+                        Clear Selected
+                    </button>
+                    <label class="flex items-center gap-2 cursor-pointer bg-slate-800 hover:bg-slate-700 py-2 px-3 rounded-lg transition touch-target w-full sm:w-auto justify-center sm:justify-start">
+                        <input type="checkbox" id="toggleBfiBaseline" checked class="accent-sky-500 w-4 h-4">
+                        <span>Waterloo IMAX Baseline</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer bg-slate-800 hover:bg-slate-700 py-2 px-3 rounded-lg transition touch-target w-full sm:w-auto justify-center sm:justify-start">
+                        <input type="checkbox" id="toggleReferences" checked class="accent-sky-500 w-4 h-4">
+                        <span>Show Benchmarks</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-4">
+                <!-- SVG Canvas Area -->
+                <div class="lg:col-span-3 p-4 sm:p-6 bg-slate-950 flex items-center justify-center relative min-h-[300px] sm:min-h-[480px]">
+                    <!-- Subtle background light projector effect -->
+                    <div class="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-sky-500/10 to-transparent pointer-events-none blur-3xl rounded-full"></div>
+                    
+                    <svg id="visualizerSvg" viewBox="0 0 800 580" class="w-full h-auto max-w-3xl drop-shadow-2xl z-10">
+                        <!-- Definitions for beautiful cinema screen glow effects -->
+                        <defs>
+                            <radialGradient id="screenGlow" cx="50%" cy="50%" r="50%">
+                                <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.25"/>
+                                <stop offset="100%" stop-color="#030712" stop-opacity="1"/>
+                            </radialGradient>
+                            <linearGradient id="bfiGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#eab308" stop-opacity="0.8"/>
+                                <stop offset="100%" stop-color="#ca8a04" stop-opacity="0.3"/>
+                            </linearGradient>
+                        </defs>
+
+                        <!-- Ground / Stage Line -->
+                        <line x1="0" y1="540" x2="800" y2="540" stroke="#334155" stroke-width="4" stroke-linecap="round" />
+                        
+                        <!-- Symmetric Width Gridlines (Centered at 400px, SCALE = 25px/meter) -->
+                        <g opacity="0.15" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,4">
+                            <!-- 10m Screen Width Limit (5m left, 5m right) -->
+                            <line x1="275" y1="540" x2="275" y2="20" />
+                            <line x1="525" y1="540" x2="525" y2="20" />
+                            
+                            <!-- 20m Screen Width Limit (10m left, 10m right) -->
+                            <line x1="150" y1="540" x2="150" y2="20" />
+                            <line x1="650" y1="540" x2="650" y2="20" />
+                            
+                            <!-- 30m Screen Width Limit (15m left, 15m right) -->
+                            <line x1="25" y1="540" x2="25" y2="20" />
+                            <line x1="775" y1="540" x2="775" y2="20" />
+                        </g>
+
+                        <!-- Symmetric Screen Width Text Indicators on Ground Axis -->
+                        <g opacity="0.4" fill="#94a3b8" font-size="10" text-anchor="middle">
+                            <text x="400" y="562" font-weight="600">Center Line (0m)</text>
+                            
+                            <text x="275" y="562">10m Width</text>
+                            <text x="525" y="562">10m Width</text>
+                            
+                            <text x="150" y="562">20m Width</text>
+                            <text x="650" y="562">20m Width</text>
+                            
+                            <text x="25" y="562">30m Limit</text>
+                            <text x="775" y="562">30m Limit</text>
+                        </g>
+
+                        <!-- Vertical Height Scale on Right Edge (Symmetric & Unobstructed) -->
+                        <g opacity="0.4">
+                            <!-- Axis Line -->
+                            <line x1="780" y1="540" x2="780" y2="20" stroke="#475569" stroke-width="2" />
+                            
+                            <!-- 5m (y = 540 - 125 = 415) -->
+                            <text x="786" y="419" fill="#94a3b8" font-size="10" text-anchor="start">5m</text>
+                            <line x1="780" y1="415" x2="785" y2="415" stroke="#475569" stroke-width="2" />
+                            
+                            <!-- 10m (y = 540 - 250 = 290) -->
+                            <text x="786" y="294" fill="#94a3b8" font-size="10" text-anchor="start">10m</text>
+                            <line x1="780" y1="290" x2="785" y2="290" stroke="#475569" stroke-width="2" />
+                            
+                            <!-- 15m (y = 540 - 375 = 165) -->
+                            <text x="786" y="169" fill="#94a3b8" font-size="10" text-anchor="start">15m</text>
+                            <line x1="780" y1="165" x2="785" y2="165" stroke="#475569" stroke-width="2" />
+                            
+                            <!-- 20m (y = 540 - 500 = 40) -->
+                            <text x="786" y="44" fill="#94a3b8" font-size="10" text-anchor="start">20m</text>
+                            <line x1="780" y1="40" x2="785" y2="40" stroke="#475569" stroke-width="2" />
+                        </g>
+
+                        <!-- Scale Baseline Outline (BFI IMAX: 25.9m x 19.8m) -->
+                        <!-- Math: Width = 25.9 * 25 = 647.5px. Height = 19.8 * 25 = 495px. x = 400 - (647.5/2) = 76.25px. y = 540 - 495 = 45px. -->
+                        <g id="bfiGroup">
+                            <rect id="bfiOutline" x="76.25" y="45" width="647.5" height="495" fill="none" stroke="#eab308" stroke-width="2" stroke-dasharray="6,4" class="vis-transition opacity-60" />
+                            <text id="bfiText" x="85" y="65" fill="#facc15" font-size="12" font-weight="600" opacity="0.7">BFI IMAX (Waterloo) Baseline Outline (25.9m × 19.8m)</text>
+                        </g>
+
+                        <!-- Selected Cinema Screen Rect (Dynamic) -->
+                        <g id="selectedScreenGroup">
+                            <!-- Dynamic screen rects & markers will render here -->
+                        </g>
+
+                        <!-- Reference Silhouettes Group (Controlled by switch) -->
+                        <g id="referenceGroup" class="vis-transition">
+                            <!-- London Double-Decker Bus (Approx 8.4m Long, 4.4m High) -->
+                            <g transform="translate(20, 430)" opacity="0.75" class="vis-transition">
+                                <rect x="0" y="0" width="210" height="110" fill="#dc2626" rx="10" />
+                                <rect x="10" y="15" width="40" height="30" fill="#cbd5e1" rx="3" />
+                                <rect x="60" y="15" width="40" height="30" fill="#cbd5e1" rx="3" />
+                                <rect x="110" y="15" width="40" height="30" fill="#cbd5e1" rx="3" />
+                                <rect x="160" y="15" width="40" height="30" fill="#cbd5e1" rx="3" />
+                                <rect x="10" y="60" width="40" height="30" fill="#cbd5e1" rx="3" />
+                                <rect x="60" y="60" width="40" height="30" fill="#cbd5e1" rx="3" />
+                                <rect x="110" y="60" width="40" height="30" fill="#cbd5e1" rx="3" />
+                                <rect x="160" y="60" width="30" height="30" fill="#94a3b8" rx="3" /> <!-- Doorway -->
+                                <circle cx="45" cy="110" r="16" fill="#1e293b" stroke="#64748b" stroke-width="2" />
+                                <circle cx="155" cy="110" r="16" fill="#1e293b" stroke="#64748b" stroke-width="2" />
+                                <circle cx="45" cy="110" r="6" fill="#94a3b8" />
+                                <circle cx="155" cy="110" r="6" fill="#94a3b8" />
+                                <text x="105" y="55" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="middle" opacity="0.9">Double-Decker Bus (4.4m)</text>
+                            </g>
+
+                            <!-- Human Silhouette (Approx 1.8m Tall, Scale: 45px High) -->
+                            <g transform="translate(393, 495)" opacity="0.95" class="vis-transition">
+                                <circle cx="7" cy="6" r="6" fill="#38bdf8" />
+                                <path d="M1,16 C1,12 4,12 7,12 C10,12 13,12 13,16 L12,30 L10,30 L10,45 L4,45 L4,30 L2,30 Z" fill="#38bdf8" />
+                                <text x="7" y="-6" fill="#38bdf8" font-size="9" font-weight="bold" text-anchor="middle">Human (1.8m)</text>
+                            </g>
+
+                            <!-- Home 55" TV (Approx 1.2m wide x 0.7m high. Scale: 30px x 17.5px) -->
+                            <g transform="translate(710, 522)" opacity="0.85" class="vis-transition">
+                                <rect x="0" y="0" width="30" height="18" fill="#1e293b" stroke="#64748b" stroke-width="1.5" rx="1" />
+                                <line x1="15" y1="18" x2="15" y2="23" stroke="#64748b" stroke-width="3" />
+                                <line x1="8" y1="23" x2="22" y2="23" stroke="#64748b" stroke-width="2" />
+                                <text x="15" y="-6" fill="#94a3b8" font-size="9" text-anchor="middle">55" TV</text>
+                            </g>
+                        </g>
+                    </svg>
+                </div>
+
+                <!-- Tech Specs Sidebar / Responsive specs dashboard below on mobile -->
+                <div class="p-5 sm:p-6 bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col justify-between gap-5">
+                    <div class="flex flex-col gap-4">
+                        <div class="border-b border-slate-800 pb-3">
+                            <span class="text-[10px] sm:text-xs text-sky-400 uppercase tracking-wider font-semibold" id="hudRegion">-</span>
+                            <h3 class="text-lg sm:text-xl font-extrabold text-slate-100 mt-1 leading-tight" id="hudName">No Screen Selected</h3>
+                        </div>
+
+                        <!-- Main Screen Data Badges -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                                <span class="text-[9px] uppercase text-slate-400 font-semibold tracking-wider">Exact Width</span>
+                                <p class="text-base sm:text-lg font-bold text-slate-100 mt-0.5" id="hudWidth">-</p>
+                            </div>
+                            <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                                <span class="text-[9px] uppercase text-slate-400 font-semibold tracking-wider">Exact Height</span>
+                                <p class="text-base sm:text-lg font-bold text-slate-100 mt-0.5" id="hudHeight">-</p>
+                            </div>
+                            <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 col-span-2">
+                                <span class="text-[9px] uppercase text-slate-400 font-semibold tracking-wider">Screen Area</span>
+                                <p class="text-lg sm:text-xl font-extrabold text-sky-400 mt-0.5" id="hudArea">-</p>
+                            </div>
+                        </div>
+
+                        <!-- Technical Specs Matrix -->
+                        <div class="flex flex-col gap-2 text-xs text-slate-300">
+                            <div class="flex items-center justify-between border-b border-slate-800/50 pb-2">
+                                <span class="text-slate-400">Premium Brand</span>
+                                <span id="hudBrand" class="font-semibold bg-sky-950 text-sky-300 px-2 py-0.5 rounded-full border border-sky-800">-</span>
+                            </div>
+                            <div class="flex items-center justify-between border-b border-slate-800/50 pb-2">
+                                <span class="text-slate-400">Aspect Ratio</span>
+                                <span id="hudRatio" class="font-mono bg-slate-950 px-2 py-0.5 rounded text-slate-200">-</span>
+                            </div>
+                            <div class="flex flex-col gap-1 border-b border-slate-800/50 pb-2">
+                                <span class="text-slate-400">Projection Setup</span>
+                                <span id="hudProjection" class="text-slate-200 font-medium">-</span>
+                            </div>
+                            <div class="flex flex-col gap-1">
+                                <span class="text-slate-400">Audio Tech</span>
+                                <span id="hudAudio" class="text-slate-200 font-medium flex items-center gap-1 mt-0.5">
+                                    <span class="material-icons text-xs text-slate-400">volume_up</span>
+                                    -
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Comparative metrics notice -->
+                    <div id="compNotice" style="display: none;" class="bg-slate-950/50 border border-slate-800 p-3 rounded-lg text-xs text-slate-400 leading-relaxed">
+                        Comparing <strong class="text-slate-200" id="compNoticeVenue">Active Screen</strong>. This screen is <strong class="text-sky-400" id="compNoticePercent">100%</strong> of the target area.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            
+            <!-- Search Location, Brand, or Ratio -->
+            <div class="flex flex-col gap-1.5 col-span-1 sm:col-span-2">
+                <label for="searchQuery" class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Search Venues / Ratios</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                        <span class="material-icons text-xl">search</span>
+                    </span>
+                    <input type="text" id="searchQuery" placeholder="e.g. London, 1.43:1, IMAX, Vue, 2.39:1..." class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition duration-150 text-sm touch-target">
+                </div>
+            </div>
+
+            <!-- Format Filter -->
+            <div class="flex flex-col gap-1.5 col-span-1">
+                <label for="formatFilter" class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Format Brand</label>
+                <select id="formatFilter" class="w-full py-2.5 px-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition duration-150 bg-white text-sm touch-target">
+                    <option value="All">All Formats</option>
+                    <option value="IMAX">IMAX (All Types)</option>
+                    <option value="Dolby Cinema">Dolby Cinema</option>
+                    <option value="Vue EPIC">Vue EPIC</option>
+                    <option value="Showcase XPlus">Showcase XPlus</option>
+                    <option value="Superscreen">Cineworld Superscreen</option>
+                </select>
+            </div>
+
+            <!-- Sort By -->
+            <div class="flex flex-col gap-1.5 col-span-1 sm:col-span-2 lg:col-span-3">
+                <label for="sortBy" class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sort Matrix</label>
+                <select id="sortBy" class="w-full py-2.5 px-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition duration-150 bg-white text-sm touch-target">
+                    <option value="areaDesc">Area (Largest First)</option>
+                    <option value="areaAsc">Area (Smallest First)</option>
+                    <option value="widthDesc">Width (Largest First)</option>
+                    <option value="widthAsc">Width (Smallest First)</option>
+                    <option value="locationAZ">Location (A to Z)</option>
+                    <option value="regionAZ">Region (A to Z)</option>
+                </select>
+            </div>
+            
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+            <!-- 1. Desktop & Tablet Spreadsheet Table (md:block) -->
+            <div class="hidden md:block overflow-x-auto custom-scrollbar">
+                <table class="min-w-full divide-y divide-slate-200 text-sm">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th class="px-4 py-4 text-center font-semibold text-slate-600 uppercase tracking-wider text-xs w-16">Compare</th>
+                            <th class="px-6 py-4 text-left font-semibold text-slate-600 uppercase tracking-wider text-xs">Venue & City</th>
+                            <th class="px-6 py-4 text-left font-semibold text-slate-600 uppercase tracking-wider text-xs">Region</th>
+                            <th class="px-6 py-4 text-left font-semibold text-slate-600 uppercase tracking-wider text-xs">Premium Brand</th>
+                            <th class="px-6 py-4 text-center font-semibold text-slate-600 uppercase tracking-wider text-xs">Dimensions (W × H)</th>
+                            <th class="px-6 py-4 text-center font-semibold text-slate-600 uppercase tracking-wider text-xs">Screen Area (m²)</th>
+                            <th class="px-6 py-4 text-left font-semibold text-slate-600 uppercase tracking-wider text-xs">Projection System</th>
+                            <th class="px-6 py-4 text-left font-semibold text-slate-600 uppercase tracking-wider text-xs">Audio Tech</th>
+                            <th class="px-6 py-4 text-center font-semibold text-slate-600 uppercase tracking-wider text-xs">Aspect Ratio</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-slate-200 bg-white cursor-pointer">
+                        <!-- Desktop rows generated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 2. Mobile Responsive Card List View (block md:hidden) -->
+            <div id="mobileCardList" class="block md:hidden divide-y divide-slate-100 bg-white">
+                <!-- Mobile card objects generated dynamically -->
+            </div>
+            
+            <!-- Empty State -->
+            <div id="emptyState" class="hidden py-12 flex flex-col items-center justify-center text-slate-400 gap-2">
+                <span class="material-icons text-5xl">sentiment_dissatisfied</span>
+                <p class="font-medium text-slate-600">No matching cinema screens found</p>
+                <p class="text-xs">Try adjusting your search criteria or choosing a different brand.</p>
+            </div>
+        </div>
+
+        <!-- Info Section -->
+        <div class="bg-slate-100 p-5 rounded-xl border border-slate-200 text-slate-600 text-xs sm:text-sm flex flex-col gap-3">
+            <h3 class="font-semibold text-slate-800 text-sm sm:text-base flex items-center gap-2">
+                <span class="material-icons text-slate-500 text-base sm:text-lg">info_outline</span>
+                Information & Notes
+            </h3>
+            <ul class="list-disc pl-5 space-y-2 leading-relaxed">
+                <li>This was based on the old Wikilist of PLF screen sizes in the UK that was deleted, as it's quite old some parts might be out of date.</li>
+                <li>*Estimated heights have been used for some screens where only the width was reported. The screen height is mathematically derived via Width ÷ Aspect Ratio based on standard structural configurations. These computed values are tagged with an * in the database.</li>
+                <li>Anything look wrong, or anything missing? <a href="mailto:feedback@ukplfregistry.example.com?subject=UK%20PLF%20Cinema%20Registry%20Feedback" class="text-sky-600 hover:text-sky-700 font-medium underline underline-offset-2 transition-colors">Get in touch</a> and I'd be happy to update.</li>
+            </ul>
+        </div>
+    </main>
+
+    <div id="mobileFloatingCompareBar" class="fixed bottom-0 inset-x-0 bg-slate-950 border-t border-slate-800 text-slate-100 p-3.5 shadow-2xl flex items-center justify-between z-50 md:hidden transition-transform duration-300 translate-y-full">
+        <div class="flex items-center gap-2">
+            <span class="material-icons text-sky-400">aspect_ratio</span>
+            <div class="text-xs">
+                <p class="font-bold" id="mobileSelectedCount">1 Screen Selected</p>
+                <p class="text-[10px] text-slate-400">Comparing sizes up to scale</p>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <button id="btnMobileClear" class="text-[11px] font-semibold bg-slate-900 hover:bg-slate-800 border border-slate-700 py-1.5 px-3 rounded-md transition touch-target">
+                Clear
+            </button>
+            <button id="btnScrollToVisualizer" class="text-[11px] font-semibold bg-sky-500 hover:bg-sky-600 text-white py-1.5 px-3.5 rounded-md shadow-sm transition touch-target">
+                View Size Scale
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-500 py-6 border-t border-slate-800 text-center text-xs">
+        <p>© 2026 UK Premium Large Format Cinema Registry. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // Cinema Dataset Consolidation (Complete dataset matching the desktop state)
+        const CINEMA_DATABASE = [
+            // --- Giant Flagships (True 1.43:1 capable) ---
+            { location: "BFI IMAX (Waterloo)", region: "London", format: "IMAX Flagship", width: 25.9, height: 19.8, computed: false, projection: "Dual System: IMAX CoLa 4K Laser & 15/70mm Film", sound: "IMAX 12-Channel", ratio: "1.43:1" },
+            { location: "Cineworld Leicester Square (IMAX)", region: "London", format: "IMAX Laser", width: 26.5, height: 15.6, computed: false, projection: "IMAX GT Dual 4K Laser", sound: "IMAX 12-Channel", ratio: "1.43:1" },
+            { location: "Science Museum (The Ronson Theatre)", region: "London", format: "IMAX Laser / Film", width: 24.3, height: 16.8, computed: false, projection: "Dual System: IMAX GT Dual 4K Laser & 15/70mm Film", sound: "IMAX 12-Channel", ratio: "1.43:1" },
+            { location: "Glasgow Science Centre", region: "Scotland", format: "IMAX Laser", width: 25.0, height: 18.9, computed: false, projection: "IMAX GT Dual 4K Laser", sound: "IMAX 12-Channel", ratio: "1.43:1" },
+            { location: "Vue Manchester Printworks", region: "North West", format: "IMAX Laser", width: 26.3, height: 18.8, computed: false, projection: "IMAX GT Dual 4K Laser", sound: "IMAX 12-Channel", ratio: "1.43:1" },
+            
+            // --- Dolby Cinema flagship arrays ---
+            { location: "Odeon Luxe Leicester Square", region: "London", format: "Dolby Cinema", width: 20.5, height: 9.0, computed: false, projection: "Dual Christie 4K 6P Laser (Dolby Vision)", sound: "Dolby Atmos", ratio: "2.39:1" },
+            { location: "Odeon Luxe Leeds Thorpe Park", region: "Yorkshire", format: "Dolby Cinema", width: 16.5, height: 7.0, computed: false, projection: "Dual Christie 4K 6P Laser (Dolby Vision)", sound: "Dolby Atmos", ratio: "2.39:1" },
+            { location: "Odeon Luxe Trafford Centre (Dolby)", region: "North West", format: "Dolby Cinema", width: 15.8, height: 6.6, computed: false, projection: "Dual Christie 4K 6P Laser (Dolby Vision)", sound: "Dolby Atmos", ratio: "2.39:1" },
+            { location: "Odeon Luxe Birmingham Broadway Plaza (Dolby)", region: "West Midlands", format: "Dolby Cinema", width: 15.0, height: 6.3, computed: false, projection: "Dual Christie 4K 6P Laser (Dolby Vision)", sound: "Dolby Atmos", ratio: "2.39:1" },
+
+            // --- Regional multiplex IMAX setups ---
+            { location: "Odeon Wimbledon", region: "London", format: "IMAX Digital", width: 15.0, height: 8.0, computed: false, projection: "Dual 2K Xenon Lamp", sound: "IMAX 6-Channel", ratio: "1.90:1" },
+            { location: "Odeon Greenwich", region: "London", format: "IMAX Laser", width: 17.1, height: 9.5, computed: false, projection: "IMAX CoLa Single 4K Laser", sound: "IMAX 12-Channel", ratio: "1.90:1" },
+            { location: "Odeon Swiss Cottage", region: "London", format: "IMAX Digital", width: 15.1, height: 8.3, computed: false, projection: "Dual 2K Xenon Lamp", sound: "IMAX 6-Channel", ratio: "1.90:1" },
+            { location: "Cineworld Wood Green", region: "London", format: "IMAX Digital", width: 16.5, height: 8.8, computed: false, projection: "Dual 2K Xenon Lamp", sound: "IMAX 6-Channel", ratio: "1.90:1" },
+            { location: "Cineworld Enfield", region: "London", format: "IMAX Digital", width: 15.8, height: 8.4, computed: false, projection: "Dual 2K Xenon Lamp", sound: "IMAX 6-Channel", ratio: "1.90:1" },
+            { location: "Cineworld Birmingham Broad St", region: "West Midlands", format: "IMAX Laser", width: 17.5, height: 9.5, computed: false, projection: "IMAX CoLa Single 4K Laser", sound: "IMAX 12-Channel", ratio: "1.90:1" },
+            { location: "Odeon Trafford Centre (IMAX)", region: "North West", format: "IMAX Laser", width: 17.9, height: 9.6, computed: false, projection: "IMAX CoLa Single 4K Laser", sound: "IMAX 12-Channel", ratio: "1.90:1" },
+            { location: "Cineworld Ashton-under-Lyne", region: "North West", format: "IMAX Digital", width: 15.5, height: 8.2, computed: false, projection: "Dual 2K Xenon Lamp", sound: "IMAX 6-Channel", ratio: "1.90:1" },
+            { location: "Cineworld Sheffield", region: "Yorkshire", format: "IMAX Laser", width: 21.3, height: 11.5, computed: false, projection: "IMAX CoLa Single 4K Laser", sound: "IMAX 12-Channel", ratio: "1.90:1" },
+            { location: "Cineworld Leeds White Rose", region: "Yorkshire", format: "IMAX Laser", width: 17.0, height: 9.2, computed: false, projection: "IMAX CoLa Single 4K Laser", sound: "IMAX 12-Channel", ratio: "1.90:1" },
+            { location: "National Science and Media Museum (Bradford)", region: "Yorkshire", format: "IMAX Laser", width: 18.3, height: 14.8, computed: false, projection: "IMAX GT Dual 4K Laser", sound: "IMAX 12-Channel", ratio: "1.43:1" },
+            { location: "Showcase Cinema de Lux Nottingham", region: "East Midlands", format: "IMAX Laser", width: 16.2, height: 8.7, computed: false, projection: "IMAX CoLa Single 4K Laser", sound: "IMAX 12-Channel", ratio: "1.90:1" },
+            { location: "Cineworld Ipswich", region: "East Anglia", format: "IMAX Digital", width: 14.9, height: 8.1, computed: false, projection: "Dual 2K Xenon Lamp", sound: "IMAX 6-Channel", ratio: "1.90:1" },
+            { location: "Cineworld Stevenage", region: "South East", format: "IMAX Digital", width: 16.4, height: 8.9, computed: false, projection: "Dual 2K Xenon Lamp", sound: "IMAX 6-Channel", ratio: "1.90:1" },
+            { location: "Cineworld Milton Keynes (IMAX)", region: "South East", format: "IMAX Laser", width: 17.6, height: 9.5, computed: false, projection: "IMAX CoLa Single 4K Laser", sound: "IMAX 12-Channel", ratio: "1.90:1" },
+            { location: "Cineworld Rushden Lakes", region: "East Midlands", format: "IMAX Laser", width: 15.2, height: 8.3, computed: false, projection: "IMAX CoLa Single 4K Laser", sound: "IMAX 12-Channel", ratio: "1.90:1" },
+            { location: "Cineworld Bristol", region: "South West", format: "IMAX Digital", width: 16.8, height: 9.0, computed: false, projection: "Dual 2K Xenon Lamp", sound: "IMAX 6-Channel", ratio: "1.90:1" },
+            { location: "Cineworld Plymouth Barcode", region: "South West", format: "IMAX Laser", width: 16.0, height: 8.6, computed: false, projection: "IMAX CoLa Single 4K Laser", sound: "IMAX 12-Channel", ratio: "1.90:1" },
+            { location: "Odeon Southampton", region: "South East", format: "IMAX Digital", width: 15.5, height: 8.4, computed: false, projection: "Dual 2K Xenon Lamp", sound: "IMAX 6-Channel", ratio: "1.90:1" },
+            { location: "Cineworld Newcastle CP", region: "North East", format: "IMAX Digital", width: 15.6, height: 8.4, computed: false, projection: "Dual 2K Xenon Lamp", sound: "IMAX 6-Channel", ratio: "1.90:1" },
+            { location: "Cineworld Edinburgh Fountain Park", region: "Scotland", format: "IMAX Laser", width: 16.8, height: 9.1, computed: false, projection: "IMAX CoLa Single 4K Laser", sound: "IMAX 12-Channel", ratio: "1.90:1" },
+            { location: "Cineworld Cardiff", region: "Wales", format: "IMAX Laser", width: 17.1, height: 9.3, computed: false, projection: "IMAX CoLa Single 4K Laser", sound: "IMAX 12-Channel", ratio: "1.90:1" },
+
+            // --- Cineworld Superscreens (Calculated Heights) ---
+            { location: "Cineworld The O2 (Screen 11)", region: "London", format: "Superscreen", width: 22.0, height: 9.2, computed: true, projection: "Single Christie 4K Laser", sound: "Dolby Atmos", ratio: "2.39:1" },
+            { location: "Cineworld Leicester Square (Screen 1)", region: "London", format: "Superscreen", width: 20.5, height: 11.0, computed: false, projection: "Dual Barco DP4K-32B (4K)", sound: "Dolby Atmos", ratio: "1.85:1" },
+            { location: "Cineworld Glasgow Renfrew Street", region: "Scotland", format: "Superscreen", width: 20.1, height: 8.4, computed: true, projection: "Single 4K Laser", sound: "Dolby Atmos", ratio: "2.39:1" },
+            { location: "Cineworld Milton Keynes (Superscreen)", region: "South East", format: "Superscreen", width: 19.5, height: 8.2, computed: true, projection: "Single 4K Laser", sound: "Dolby Atmos", ratio: "2.39:1" },
+            { location: "Cineworld Newcastle upon Tyne", region: "North East", format: "Superscreen", width: 18.8, height: 7.9, computed: true, projection: "Single 4K Laser", sound: "Dolby Atmos", ratio: "2.39:1" },
+            { location: "Cineworld Watford", region: "South East", format: "Superscreen", width: 18.2, height: 7.6, computed: true, projection: "Single 4K Laser", sound: "Dolby Atmos", ratio: "2.39:1" },
+
+            // --- Vue EPIC Custom Arrays (Upgraded from VueXtreme, Inferred Heights) ---
+            { location: "Vue Westfield London (Shepherds Bush)", region: "London", format: "Vue EPIC", width: 20.0, height: 8.4, computed: true, projection: "Barco HDR Laser (Lightsteering Technology)", sound: "Dolby Atmos", ratio: "2.39:1" },
+            { location: "Vue Leeds Kirkstall", region: "Yorkshire", format: "Vue EPIC", width: 17.5, height: 7.3, computed: true, projection: "Barco HDR Laser (Lightsteering Technology)", sound: "Dolby Atmos", ratio: "2.39:1" },
+            { location: "Vue Stratford City (Screens 5 & 17)", region: "London", format: "Vue EPIC", width: 20.0, height: 8.4, computed: true, projection: "Barco HDR Laser (Lightsteering / Dual Sony 4K)", sound: "Dolby Atmos / 7.1", ratio: "2.39:1" },
+
+            // --- Showcase XPlus Custom Premium Screens (Upgraded to Barco Laser, Inferred Heights) ---
+            { location: "Showcase Bluewater (Kent)", region: "South East", format: "Showcase XPlus", width: 21.0, height: 8.8, computed: true, projection: "Barco Series 4 4K Laser / Christie Duo", sound: "Dolby Atmos", ratio: "2.39:1" },
+            { location: "Showcase Coventry", region: "West Midlands", format: "Showcase XPlus", width: 18.5, height: 7.7, computed: true, projection: "Barco Series 4 4K Laser / Christie Duo", sound: "Dolby Atmos", ratio: "2.39:1" },
+            { location: "Showcase Derby", region: "East Midlands", format: "Showcase XPlus", width: 19.0, height: 7.9, computed: true, projection: "Barco Series 4 4K Laser / Christie Duo", sound: "Dolby Atmos", ratio: "2.39:1" },
+            { location: "Showcase Leeds (Birstall)", region: "Yorkshire", format: "Showcase XPlus", width: 19.2, height: 8.0, computed: true, projection: "Barco Series 4 4K Laser / Christie Duo", sound: "Dolby Atmos", ratio: "2.39:1" },
+            { location: "Showcase Liverpool", region: "North West", format: "Showcase XPlus", width: 18.0, height: 7.5, computed: true, projection: "Barco Series 4 4K Laser / Christie Duo", sound: "Dolby Atmos", ratio: "2.39:1" },
+            { location: "Showcase Reading", region: "South East", format: "Showcase XPlus", width: 18.7, height: 7.8, computed: true, projection: "Barco Series 4 4K Laser / Christie Duo", sound: "Dolby Atmos", ratio: "2.39:1" },
+            { location: "Showcase Cinema de Lux Bristol", region: "South West", format: "Showcase XPlus", width: 19.0, height: 7.9, computed: true, projection: "Barco Series 4 4K Laser / Christie Duo", sound: "Dolby Atmos", ratio: "2.39:1" },
+            
+            // --- Custom Indepedent / Niche Flagship (Inferred Heights) ---
+            { location: "The Light Cambridge", region: "East Anglia", format: "The Horizon", width: 16.5, height: 6.9, computed: true, projection: "Premium 4K Laser Projection", sound: "Dolby Atmos", ratio: "2.39:1" }
+        ];
+
+        // Global tracker for multi-select cinema comparisons (maximum 4 concurrent overlays)
+        let selectedCinemas = []; 
+        const COMPARE_COLORS = [
+            { stroke: "#38bdf8", fill: "rgba(56, 189, 248, 0.15)" }, // Sky Blue
+            { stroke: "#10b981", fill: "rgba(16, 185, 129, 0.15)" }, // Emerald Green
+            { stroke: "#8b5cf6", fill: "rgba(139, 92, 246, 0.15)" }, // Violet
+            { stroke: "#f43f5e", fill: "rgba(244, 63, 94, 0.15)" }  // Rose
+        ];
+
+        const searchQueryEl = document.getElementById('searchQuery');
+        const formatFilterEl = document.getElementById('formatFilter');
+        const sortByEl = document.getElementById('sortBy');
+        const tableBodyEl = document.getElementById('tableBody');
+        const mobileCardListEl = document.getElementById('mobileCardList');
+        const emptyStateEl = document.getElementById('emptyState');
+
+        // Visualizer Elements
+        const bfiGroup = document.getElementById('bfiGroup');
+        const referenceGroup = document.getElementById('referenceGroup');
+        const toggleBfiBaseline = document.getElementById('toggleBfiBaseline');
+        const toggleReferences = document.getElementById('toggleReferences');
+
+        // HUD Elements
+        const hudRegion = document.getElementById('hudRegion');
+        const hudName = document.getElementById('hudName');
+        const hudWidth = document.getElementById('hudWidth');
+        const hudHeight = document.getElementById('hudHeight');
+        const hudArea = document.getElementById('hudArea');
+        const hudBrand = document.getElementById('hudBrand');
+        const hudRatio = document.getElementById('hudRatio');
+        const hudProjection = document.getElementById('hudProjection');
+        const hudAudio = document.getElementById('hudAudio');
+        const compNotice = document.getElementById('compNotice');
+        const compNoticeVenue = document.getElementById('compNoticeVenue');
+        const compNoticePercent = document.getElementById('compNoticePercent');
+        const btnClearComparison = document.getElementById('btnClearComparison');
+
+        // Floating Mobile Compare Dock Elements
+        const mobileFloatingCompareBar = document.getElementById('mobileFloatingCompareBar');
+        const mobileSelectedCount = document.getElementById('mobileSelectedCount');
+        const btnMobileClear = document.getElementById('btnMobileClear');
+        const btnScrollToVisualizer = document.getElementById('btnScrollToVisualizer');
+
+        // Scale factor helper (Canvas is 800px wide, representing 32 meters)
+        // 1m = 25px
+        const SCALE = 25; 
+        const FLOOR_Y = 540; // Shifted down slightly to allow more visual headroom
+        const CENTER_X = 400;
+
+        function updateScaleVisuals() {
+            const group = document.getElementById('selectedScreenGroup');
+            group.innerHTML = ''; // Clear previous layers
+
+            if (selectedCinemas.length === 0) {
+                // Render placeholder message
+                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                text.setAttribute("x", "400");
+                text.setAttribute("y", "250");
+                text.setAttribute("fill", "#64748b");
+                text.setAttribute("font-size", "14");
+                text.setAttribute("font-weight", "500");
+                text.setAttribute("text-anchor", "middle");
+                text.textContent = "No screens selected. Click rows or cards to compare up to 4.";
+                group.appendChild(text);
+
+                // Clear Details HUD
+                hudRegion.textContent = "-";
+                hudName.textContent = "No Screen Selected";
+                hudWidth.textContent = "-";
+                hudHeight.textContent = "-";
+                hudArea.textContent = "-";
+                hudBrand.textContent = "-";
+                hudRatio.textContent = "-";
+                hudProjection.textContent = "-";
+                hudAudio.innerHTML = `<span class="material-icons text-xs text-slate-400">volume_up</span> -`;
+                compNotice.style.display = "none";
+                
+                // Slide down mobile compare bar
+                mobileFloatingCompareBar.classList.add('translate-y-full');
+                return;
+            }
+
+            compNotice.style.display = "block";
+
+            // Loop and draw each compared screen onto the comparison canvas
+            selectedCinemas.forEach((cinema, index) => {
+                const colorObj = COMPARE_COLORS[index % COMPARE_COLORS.length];
+                const rectWidth = cinema.width * SCALE;
+                const rectHeight = cinema.height * SCALE;
+                const rectX = CENTER_X - (rectWidth / 2);
+                const rectY = FLOOR_Y - rectHeight;
+
+                // Screen Boundary Rectangle
+                const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                rect.setAttribute("x", rectX);
+                rect.setAttribute("y", rectY);
+                rect.setAttribute("width", rectWidth);
+                rect.setAttribute("height", rectHeight);
+                rect.setAttribute("fill", colorObj.fill);
+                rect.setAttribute("stroke", colorObj.stroke);
+                rect.setAttribute("stroke-width", "3");
+                rect.setAttribute("rx", "6");
+                rect.setAttribute("class", "vis-transition");
+                group.appendChild(rect);
+
+                // Visual Center Indicator Dot
+                const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                circle.setAttribute("cx", CENTER_X);
+                circle.setAttribute("cy", FLOOR_Y - (rectHeight / 2));
+                circle.setAttribute("r", "3.5");
+                circle.setAttribute("fill", colorObj.stroke);
+                circle.setAttribute("opacity", "0.7");
+                group.appendChild(circle);
+
+                // High-visibility overlay label
+                const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                label.setAttribute("x", CENTER_X);
+                label.setAttribute("y", rectY + 20 + (index * 16)); // Offset each label line
+                label.setAttribute("fill", colorObj.stroke);
+                label.setAttribute("font-size", "11");
+                label.setAttribute("font-weight", "bold");
+                label.setAttribute("text-anchor", "middle");
+                label.setAttribute("style", "text-shadow: 0 1px 3px rgba(0,0,0,0.9);");
+                label.textContent = `${cinema.location.split('(')[0].trim()} (${cinema.width.toFixed(1)}m × ${cinema.height.toFixed(1)}m)`;
+                group.appendChild(label);
+            });
+
+            // Set details HUD info using the most recently selected screen
+            const primaryCinema = selectedCinemas[selectedCinemas.length - 1];
+            hudRegion.textContent = primaryCinema.region;
+            hudName.textContent = primaryCinema.location;
+            hudWidth.textContent = `${primaryCinema.width.toFixed(1)}m`;
+            hudHeight.textContent = `${primaryCinema.height.toFixed(1)}m${primaryCinema.computed ? '*' : ''}`;
+            
+            const area = primaryCinema.width * primaryCinema.height;
+            hudArea.textContent = `${area.toFixed(1)} m²${primaryCinema.computed ? '*' : ''}`;
+            
+            hudBrand.textContent = primaryCinema.format;
+            hudRatio.textContent = primaryCinema.ratio;
+            hudProjection.textContent = primaryCinema.projection;
+            hudAudio.innerHTML = `<span class="material-icons text-xs text-slate-400">volume_up</span> ${primaryCinema.sound}`;
+
+            // Area calculation compared with BFI IMAX Waterloo baseline (or first compared screen)
+            const bfiArea = 25.9 * 19.8;
+            if (selectedCinemas.length === 1) {
+                const areaPercent = (area / bfiArea) * 100;
+                compNoticeVenue.textContent = primaryCinema.location.split('(')[0].trim();
+                compNoticePercent.textContent = `${areaPercent.toFixed(1)}%`;
+            } else {
+                const baseline = selectedCinemas[0];
+                const baselineArea = baseline.width * baseline.height;
+                const ratioPercent = (area / baselineArea) * 100;
+                compNoticeVenue.textContent = `${primaryCinema.location.split('(')[0].trim()} vs ${baseline.location.split('(')[0].trim()}`;
+                compNoticePercent.textContent = `${ratioPercent.toFixed(1)}%`;
+            }
+
+            // Slide up floating mobile compare bar if selected screens > 0
+            if (selectedCinemas.length > 0) {
+                mobileSelectedCount.textContent = `${selectedCinemas.length} Screen${selectedCinemas.length > 1 ? 's' : ''} Selected`;
+                mobileFloatingCompareBar.classList.remove('translate-y-full');
+            } else {
+                mobileFloatingCompareBar.classList.add('translate-y-full');
+            }
+        }
+
+        // Set visualizer visibility options
+        toggleBfiBaseline.addEventListener('change', (e) => {
+            bfiGroup.style.display = e.target.checked ? 'block' : 'none';
+        });
+
+        toggleReferences.addEventListener('change', (e) => {
+            referenceGroup.style.display = e.target.checked ? 'block' : 'none';
+        });
+
+        // Toggle comparative array selections
+        function toggleComparison(cinema) {
+            const idx = selectedCinemas.findIndex(c => c.location === cinema.location);
+            if (idx > -1) {
+                selectedCinemas.splice(idx, 1);
+            } else {
+                if (selectedCinemas.length >= 4) {
+                    selectedCinemas.shift(); // Remove oldest to maintain max of 4
+                }
+                selectedCinemas.push(cinema);
+            }
+            updateScaleVisuals();
+            renderDatabase();
+        }
+
+        function renderDatabase() {
+            const query = searchQueryEl.value.toLowerCase().trim();
+            const format = formatFilterEl.value;
+            const sort = sortByEl.value;
+
+            // 1. Filter
+            let filtered = CINEMA_DATABASE.filter(cinema => {
+                const matchesSearch = cinema.location.toLowerCase().includes(query) || 
+                                      cinema.region.toLowerCase().includes(query) ||
+                                      cinema.format.toLowerCase().includes(query) ||
+                                      cinema.projection.toLowerCase().includes(query) ||
+                                      cinema.ratio.toLowerCase().includes(query);
+                
+                let matchesFormat = true;
+                if (format !== 'All') {
+                    if (format === 'IMAX') {
+                        matchesFormat = cinema.format.includes('IMAX');
+                    } else {
+                        matchesFormat = cinema.format === format;
+                    }
+                }
+                
+                return matchesSearch && matchesFormat;
+            });
+
+            // 2. Sort
+            filtered.sort((a, b) => {
+                const areaA = a.width * a.height;
+                const areaB = b.width * b.height;
+                if (sort === 'areaDesc') return areaB - areaA;
+                if (sort === 'areaAsc') return areaA - areaB;
+                if (sort === 'widthDesc') return b.width - a.width;
+                if (sort === 'widthAsc') return a.width - b.width;
+                if (sort === 'locationAZ') return a.location.localeCompare(b.location);
+                if (sort === 'regionAZ') return a.region.localeCompare(b.region);
+                return 0;
+            });
+
+            // 3. Paint Views
+            tableBodyEl.innerHTML = '';
+            mobileCardListEl.innerHTML = '';
+
+            if (filtered.length === 0) {
+                emptyStateEl.classList.remove('hidden');
+                return;
+            }
+            emptyStateEl.classList.add('hidden');
+
+            filtered.forEach(cinema => {
+                // Determine selection indices & formatting parameters
+                const isSelected = selectedCinemas.some(c => c.location === cinema.location);
+                const compareIndex = selectedCinemas.findIndex(c => c.location === cinema.location);
+                
+                // Color Code Formats
+                let formatBadgeClass = "bg-slate-100 text-slate-800";
+                if (cinema.format.includes('IMAX')) formatBadgeClass = "bg-amber-100 text-amber-900 border border-amber-200";
+                else if (cinema.format === 'Dolby Cinema') formatBadgeClass = "bg-indigo-100 text-indigo-900 border border-indigo-200";
+                else if (cinema.format === 'Vue EPIC') formatBadgeClass = "bg-teal-100 text-teal-900 border border-teal-200";
+                else if (cinema.format === 'Showcase XPlus') formatBadgeClass = "bg-sky-100 text-sky-900 border border-sky-200";
+                else if (cinema.format === 'Superscreen') formatBadgeClass = "bg-purple-100 text-purple-900 border border-purple-200";
+
+                const isComputedTag = cinema.computed ? '<span class="text-slate-400 text-xs ml-0.5 font-bold" title="Inferred Dimension">*</span>' : '';
+                const areaVal = (cinema.width * cinema.height).toFixed(1);
+                const isAreaComputedTag = cinema.computed ? '<span class="text-slate-400 text-xs ml-0.5 font-bold" title="Inferred Area calculation">*</span>' : '';
+
+                // A. Paint Desktop Spreadsheet Row
+                let compareStatusHtml = '';
+                const tr = document.createElement('tr');
+                if (isSelected) {
+                    const color = COMPARE_COLORS[compareIndex % COMPARE_COLORS.length].stroke;
+                    compareStatusHtml = `<span class="material-icons text-xl align-middle" style="color: ${color};">check_box</span>`;
+                    tr.className = `transition duration-100 ease-in-out border-l-4`;
+                    tr.style.borderLeftColor = color;
+                    tr.style.backgroundColor = `${color}12`;
+                } else {
+                    compareStatusHtml = `<span class="material-icons text-xl align-middle text-slate-300 hover:text-slate-400">check_box_outline_blank</span>`;
+                    tr.className = `transition duration-100 ease-in-out hover:bg-slate-50`;
+                    tr.style.borderLeftColor = 'transparent';
+                    tr.style.backgroundColor = 'transparent';
+                }
+
+                tr.innerHTML = `
+                    <td class="px-4 py-4 text-center whitespace-nowrap">${compareStatusHtml}</td>
+                    <td class="px-6 py-4 font-semibold text-slate-900 whitespace-nowrap">${cinema.location}</td>
+                    <td class="px-6 py-4 text-slate-500 whitespace-nowrap">${cinema.region}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${formatBadgeClass}">
+                            ${cinema.format}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-center font-mono font-medium text-slate-800 whitespace-nowrap">
+                        ${cinema.width.toFixed(1)}m × ${cinema.height.toFixed(1)}m${isComputedTag}
+                    </td>
+                    <td class="px-6 py-4 text-center font-mono font-semibold text-slate-800 whitespace-nowrap">
+                        ${areaVal} m²${isAreaComputedTag}
+                    </td>
+                    <td class="px-6 py-4 text-slate-600">${cinema.projection}</td>
+                    <td class="px-6 py-4 text-slate-600 whitespace-nowrap">
+                        <div class="flex items-center gap-1.5">
+                            <span class="material-icons text-xs text-slate-400">volume_up</span>
+                            ${cinema.sound}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-center whitespace-nowrap">
+                        <span class="font-semibold text-slate-700 bg-slate-100 py-1 px-2.5 rounded text-xs">
+                            ${cinema.ratio}
+                        </span>
+                    </td>
+                `;
+                tr.addEventListener('click', () => toggleComparison(cinema));
+                tableBodyEl.appendChild(tr);
+
+                // B. Paint Mobile Touch-Optimized Cards
+                const card = document.createElement('div');
+                let mobileCheckIconColor = "text-slate-300";
+                let mobileBorderHighlight = "border-slate-200";
+                let mobileBgHighlight = "bg-white";
+
+                if (isSelected) {
+                    const color = COMPARE_COLORS[compareIndex % COMPARE_COLORS.length].stroke;
+                    mobileCheckIconColor = `style="color: ${color};"`;
+                    mobileBorderHighlight = `style="border-color: ${color}; border-width: 2px;"`;
+                    mobileBgHighlight = `style="background-color: ${color}09;"`;
+                }
+
+                card.className = "p-4 flex flex-col gap-3 transition-all";
+                card.innerHTML = `
+                    <div class="flex justify-between items-start" ${mobileBgHighlight}>
+                        <div class="min-w-0 pr-2">
+                            <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">${cinema.region}</span>
+                            <h4 class="font-bold text-slate-900 text-sm sm:text-base mt-0.5 leading-tight">${cinema.location}</h4>
+                        </div>
+                        <button class="w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 hover:bg-slate-100 active:scale-95 transition shrink-0 touch-target" aria-label="Toggle Comparison">
+                            <span class="material-icons text-2xl align-middle" ${mobileCheckIconColor}>
+                                ${isSelected ? 'check_box' : 'check_box_outline_blank'}
+                            </span>
+                        </button>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${formatBadgeClass}">
+                            ${cinema.format}
+                        </span>
+                        <span class="px-1.5 py-0.5 font-semibold text-slate-700 bg-slate-100 rounded text-[10px]">
+                            ${cinema.ratio}
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 text-xs border-t border-slate-100 pt-3 mt-1 text-slate-600">
+                        <div>
+                            <span class="text-slate-400 block text-[9px] uppercase font-bold tracking-wider">Dimensions (W × H)</span>
+                            <span class="font-mono font-medium text-slate-800 text-sm">
+                                ${cinema.width.toFixed(1)}m × ${cinema.height.toFixed(1)}m${isComputedTag}
+                            </span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block text-[9px] uppercase font-bold tracking-wider">Screen Area</span>
+                            <span class="font-mono font-bold text-slate-900 text-sm">
+                                ${areaVal} m²${isAreaComputedTag}
+                            </span>
+                        </div>
+                        <div class="col-span-2">
+                            <span class="text-slate-400 block text-[9px] uppercase font-bold tracking-wider">Projection Setup</span>
+                            <span class="text-slate-700 leading-normal block mt-0.5">${cinema.projection}</span>
+                        </div>
+                        <div class="col-span-2">
+                            <span class="text-slate-400 block text-[9px] uppercase font-bold tracking-wider">Audio Standard</span>
+                            <span class="text-slate-700 flex items-center gap-1.5 mt-0.5">
+                                <span class="material-icons text-xs text-slate-400">volume_up</span>
+                                ${cinema.sound}
+                            </span>
+                        </div>
+                    </div>
+                `;
+                // Allow tapping card background area or check widget to toggle
+                card.addEventListener('click', (e) => {
+                    // Check if click was inside toggle action button to avoid double firing
+                    if (e.target.closest('button')) {
+                        e.stopPropagation();
+                    }
+                    toggleComparison(cinema);
+                });
+                mobileCardListEl.appendChild(card);
+            });
+        }
+
+        searchQueryEl.addEventListener('input', renderDatabase);
+        formatFilterEl.addEventListener('change', renderDatabase);
+        sortByEl.addEventListener('change', renderDatabase);
+
+        // Reset comparisons
+        function clearAllComparisons() {
+            selectedCinemas = [];
+            updateScaleVisuals();
+            renderDatabase();
+        }
+
+        btnClearComparison.addEventListener('click', clearAllComparisons);
+        btnMobileClear.addEventListener('click', clearAllComparisons);
+
+        // Scroll mobile user smoothly back up to visual comparison canvas
+        btnScrollToVisualizer.addEventListener('click', () => {
+            const el = document.getElementById('visualizerCard');
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+
+        // Initial paint
+        updateScaleVisuals();
+        renderDatabase();
+    </script>
+</body>
+</html>
